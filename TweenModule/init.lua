@@ -1,0 +1,920 @@
+--require(game:GetService("ServerScriptService").Runtime):Init()
+
+local CollectionService = game:GetService("CollectionService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+--- @class TweenModule
+--- A module for creating and managing tweens in Roblox.
+--- Provides functions for movement, scaling, rotation, transparency, shaking, and color transitions.
+
+local TweenModule = {}
+TweenModule.Active = {}
+TweenModule.Groups = {}
+TweenModule.ShowTips = script:GetAttribute("ShowErrorTips")
+
+TweenModule.Enums = {
+	Styles = {
+		Linear = Enum.EasingStyle.Linear,
+		Sine = Enum.EasingStyle.Sine,
+		Back = Enum.EasingStyle.Back,
+		Bounce = Enum.EasingStyle.Bounce,
+		Circular = Enum.EasingStyle.Circular,
+		Cubic = Enum.EasingStyle.Cubic,
+		Elastic = Enum.EasingStyle.Elastic,
+		Exponential = Enum.EasingStyle.Exponential,
+		Quad = Enum.EasingStyle.Quad,
+		Quart = Enum.EasingStyle.Quart,
+		Quint = Enum.EasingStyle.Quint,
+	},
+	Directions = {
+		In = Enum.EasingDirection.In,
+		Out = Enum.EasingDirection.Out,
+		InOut = Enum.EasingDirection.InOut,
+	},
+}
+
+local BasePartPool = table.create(10)
+
+local CommonPropertyTypos = {
+	["Transperency"] = "Transparency",
+	["Colur"] = "Color",
+	["Szie"] = "Size",
+	["Postion"] = "Position",
+}
+
+local ErrorTips = {
+	["attempt to index nil"] = {
+		tip = "You might be tweening an object that doesn't exist or couldn't be found. Make sure the instance you're trying to tween is valid.",
+	},
+	["invalid argument #%d+"] = {
+		tip = "A value passed into TweenService or TweenInfo may be the wrong type. Use `number`, `UDim2`, `Vector3`, etc. — not strings like `'0.5'`.",
+	},
+	["expected .* got .*"] = {
+		tip = "One of your arguments is the wrong type. Double-check the value types you're passing.",
+	},
+	["not a valid member"] = {
+		tip = "This error usually means you mistyped a property name. Check for typos like `Transperency` instead of `Transparency`.",
+		suggest = function(err)
+			for typo, correct in pairs(CommonPropertyTypos) do
+				if err:find(typo) then
+					return ("Did you mean `%s` instead of `%s`?"):format(correct, typo)
+				end
+			end
+		end,
+	},
+	["TweenService:Create.*failed"] = {
+		tip = "You're probably trying to tween a non-tweenable property. Only use `Transparency`, `Size`, `Position`, `Color`, etc.",
+	},
+}
+
+local function LogError(context: string, err: string)
+	error(("[%s] : %s"):format(context, err))
+end
+
+local function HandleError(context: string, err: string)
+	LogError(context, err)
+
+	if not TweenModule.ShowTips then
+		return
+	end
+
+	for Pattern, Data in pairs(ErrorTips) do
+		if err:match(Pattern) then
+			warn("[Jaylen's TweenModule TIP] " .. Data.tip)
+			if Data.suggest then
+				local suggestion = Data.suggest(err)
+				if suggestion then
+					warn("[Jaylen's TweenModule Suggestion] " .. suggestion)
+				end
+			end
+		end
+	end
+end
+
+local function ParseTweenProfile(ProfileName: string): TweenInfo?
+	if not ProfileName then
+		LogError("ParseTweenProfile", "No profile name provided (got nil)")
+		return nil
+	end
+
+	local EasingStyleMatch, EasingDirectionMatch
+	local duration, repeatCount, reverses, delayTime = 1, 0, false, 0
+
+	local segments = string.split(ProfileName, ":")
+	local ProfileSegment = segments[1]:lower()
+
+	local SortedDirections = {}
+
+	for DirectionName, DirectionEnum in pairs(TweenModule.Enums.Directions) do
+		table.insert(SortedDirections, { Name = DirectionName, Enum = DirectionEnum })
+	end
+
+	table.sort(SortedDirections, function(a, b)
+		return #a.Name > #b.Name
+	end)
+
+	for _, Entry in ipairs(SortedDirections) do
+		if ProfileSegment:find(Entry.Name:lower()) then
+			EasingDirectionMatch = Entry.Enum
+			break
+		end
+	end
+
+	for StyleName, StyleEnum in pairs(TweenModule.Enums.Styles) do
+		if ProfileSegment:find(StyleName:lower()) then
+			EasingStyleMatch = StyleEnum
+			break
+		end
+	end
+
+	if segments[2] then
+		duration = tonumber(segments[2]) or 1
+	end
+	if segments[3] then
+		repeatCount = tonumber(segments[3]) or 0
+	end
+	if segments[4] then
+		reverses = segments[4]:lower() == "true"
+	end
+	if segments[5] then
+		delayTime = tonumber(segments[5]) or 0
+	end
+
+	if EasingStyleMatch and EasingDirectionMatch then
+		return TweenInfo.new(duration, EasingStyleMatch, EasingDirectionMatch, repeatCount, reverses, delayTime)
+	end
+
+	LogError(
+		"ParseTweenProfile",
+		`The TweenInfo "{ProfileName}" is not a Tween, please check the tutorial for any help`
+	)
+	return nil
+end
+
+local function createTween(instance: Instance, tweenInfo: TweenInfo | string, properties: { [string]: any })
+	if typeof(tweenInfo) == "string" then
+		tweenInfo = ParseTweenProfile(tweenInfo)
+		if not tweenInfo then
+			HandleError("createTween", "Failed to parse TweenInfo string: " .. tweenInfo)
+			return nil
+		end
+	end
+
+	local success, Tween = pcall(function()
+		return TweenService:Create(instance, tweenInfo, properties)
+	end)
+
+	if not success then
+		HandleError("createTween", Tween)
+		return nil
+	end
+
+	local Handle = {
+		Tween = Tween,
+		Play = function()
+			Tween:Play()
+		end,
+		Pause = function()
+			Tween:Pause()
+		end,
+		Resume = function()
+			Tween:Play()
+		end,
+		Cancel = function()
+			if Tween.PlaybackState ~= Enum.PlaybackState.Completed then
+				Tween:Cancel()
+			end
+			Tween:Destroy()
+			if TweenModule.Active then
+				TweenModule.Active[instance] = nil
+			end
+		end,
+	}
+
+	TweenModule.Active = TweenModule.Active or {}
+	TweenModule.Active[instance] = Handle
+
+	Tween.Completed:Once(function()
+		Handle.Cancel()
+	end)
+
+	Tween:Play()
+	return Handle
+end
+
+local function lerpProperty(start, target, alpha)
+	if typeof(start) == "ColorSequence" and typeof(target) == "ColorSequence" then
+		local newKeypoints = {}
+		for i, keypoint in ipairs(start.Keypoints) do
+			local targetKeypoint = target.Keypoints[i] or target.Keypoints[#target.Keypoints]
+			local startColor = keypoint.Value
+			local targetColor = targetKeypoint.Value
+
+			local lerpedColor = Color3.new(
+				startColor.R + (targetColor.R - startColor.R) * alpha,
+				startColor.G + (targetColor.G - startColor.G) * alpha,
+				startColor.B + (targetColor.B - startColor.B) * alpha
+			)
+
+			table.insert(newKeypoints, ColorSequenceKeypoint.new(keypoint.Time, lerpedColor))
+		end
+		return ColorSequence.new(newKeypoints)
+	elseif typeof(start) == "ColorSequence" and typeof(target) == "Color3" then
+		local startColor = start.Keypoints[1].Value
+		local targetColor = target
+
+		local lerpedColor = Color3.new(
+			startColor.R + (targetColor.R - startColor.R) * alpha,
+			startColor.G + (targetColor.G - startColor.G) * alpha,
+			startColor.B + (targetColor.B - startColor.B) * alpha
+		)
+
+		return ColorSequence.new({
+			ColorSequenceKeypoint.new(0, lerpedColor),
+			ColorSequenceKeypoint.new(1, lerpedColor),
+		})
+	elseif typeof(start) == "NumberSequence" and typeof(target) == "NumberSequence" then
+		local newKeypoints = {}
+		for i, keypoint in ipairs(start.Keypoints) do
+			local targetKeypoint = target.Keypoints[i] or target.Keypoints[#target.Keypoints]
+			local startValue = keypoint.Value
+			local targetValue = targetKeypoint.Value
+
+			local interpolatedValue = startValue + (targetValue - startValue) * alpha
+
+			table.insert(newKeypoints, NumberSequenceKeypoint.new(keypoint.Time, math.clamp(interpolatedValue, 0, 1)))
+		end
+		return NumberSequence.new(newKeypoints)
+	elseif typeof(start) == "Vector2" and typeof(target) == "Vector2" then
+		return Vector2.new(start.X + (target.X - start.X) * alpha, start.Y + (target.Y - start.Y) * alpha)
+	elseif typeof(start) == "number" and typeof(target) == "number" then
+		return start + (target - start) * alpha
+	else
+		return start
+	end
+end
+
+local function getBaseParts(target: PVInstance): { BasePart }
+	table.clear(BasePartPool)
+
+	if target:IsA("BasePart") then
+		table.insert(BasePartPool, target)
+	elseif target:IsA("Model") or target:IsA("Folder") then
+		for _, descendant in ipairs(target:GetDescendants()) do
+			if descendant:IsA("BasePart") then
+				table.insert(BasePartPool, descendant)
+			end
+		end
+	end
+
+	return BasePartPool
+end
+
+local function interpolateProperty(
+	instance: Instance,
+	property: string,
+	duration: number,
+	targetValue: any,
+	easingStyle: Enum.EasingStyle,
+	easingDirection: Enum.EasingDirection,
+	repeatCount: number?,
+	reverses: boolean?,
+	delayTime: number?,
+	lerpFunction: (start: any, goal: any, alpha: number) -> any
+)
+	if delayTime and delayTime > 0 then
+		task.delay(delayTime, function()
+			interpolateProperty(
+				instance,
+				property,
+				duration,
+				targetValue,
+				easingStyle,
+				easingDirection,
+				repeatCount,
+				reverses,
+				nil,
+				lerpFunction
+			)
+		end)
+		return
+	end
+
+	local startTime: number = tick()
+	local startValue = instance[property]
+	local connection: RBXScriptConnection
+	local count, isReversing = 0, false
+
+	local totalCycles = repeatCount and (reverses and repeatCount * 2 or repeatCount) or 1
+
+	connection = RunService.Heartbeat:Connect(function()
+		local elapsedTime: number = math.clamp(tick() - startTime, 0, duration)
+		local alpha: number = TweenService:GetValue(elapsedTime / duration, easingStyle, easingDirection)
+
+		local currentStart = isReversing and targetValue or startValue
+		local currentTarget = isReversing and startValue or targetValue
+
+		if typeof(currentStart) == "ColorSequence" and typeof(currentTarget) == "Color3" then
+			local startColor = currentStart.Keypoints[1].Value
+			local targetColor = currentTarget
+
+			local lerpedColor = Color3.new(
+				math.clamp(startColor.R * (1 - alpha) + targetColor.R * alpha, 0, 1),
+				math.clamp(startColor.G * (1 - alpha) + targetColor.G * alpha, 0, 1),
+				math.clamp(startColor.B * (1 - alpha) + targetColor.B * alpha, 0, 1)
+			)
+
+			instance[property] = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, lerpedColor),
+				ColorSequenceKeypoint.new(1, lerpedColor),
+			})
+		elseif typeof(currentStart) == "NumberSequence" and typeof(currentTarget) == "NumberSequence" then
+			local newKeypoints = {}
+			for i, keypoint in ipairs(currentStart.Keypoints) do
+				local targetKeypoint = currentTarget.Keypoints[i] or currentTarget.Keypoints[#currentTarget.Keypoints]
+				local lerpedValue = keypoint.Value + (targetKeypoint.Value - keypoint.Value) * alpha
+
+				table.insert(
+					newKeypoints,
+					NumberSequenceKeypoint.new(math.clamp(keypoint.Time, 0, 1), math.clamp(lerpedValue, 0, 1))
+				)
+			end
+			instance[property] = NumberSequence.new(newKeypoints)
+		else
+			instance[property] = lerpFunction(currentStart, currentTarget, alpha)
+		end
+
+		if elapsedTime >= duration then
+			count += 1
+
+			if reverses and count < totalCycles then
+				isReversing = not isReversing
+			end
+
+			if count >= totalCycles then
+				connection:Disconnect()
+			else
+				startTime = tick()
+			end
+		end
+	end)
+end
+
+--[=[
+    Moves a PVInstance to a new position using tweens.
+    @param target (PVInstance): The instance to move.
+    @param tweenInfo (TweenInfo | string): The tween settings.
+    @param movement (CFrame): The movement offset.
+    @param byPivot (boolean): If true, moves using pivot.
+]=]
+
+function TweenModule.Move(
+	target: PVInstance,
+	tweenInfo: TweenInfo | string,
+	movement: CFrame | Vector3,
+	byPivot: boolean
+)
+	local isFolder = target:IsA("Folder")
+	local model = target
+
+	if isFolder then
+		model = Instance.new("Model")
+		model.Name = "[TempMoveModel]"
+		model.Parent = workspace
+
+		for _, child in ipairs(target:GetChildren()) do
+			if child:IsA("BasePart") then
+				child.Parent = model
+			end
+		end
+
+		model:PivotTo(target:GetPivot())
+	end
+
+	local originalPivot = model:GetPivot()
+	local newPivot: CFrame
+
+	if typeof(movement) == "CFrame" then
+		newPivot = byPivot and (originalPivot * movement) or (originalPivot + movement.Position)
+	elseif typeof(movement) == "Vector3" then
+		newPivot = originalPivot + movement
+	else
+		error("[TweenModule.Move] 'movement' must be a CFrame or Vector3")
+	end
+
+	local CFrameValue = Instance.new("CFrameValue")
+	CFrameValue.Value = originalPivot
+
+	CFrameValue.Changed:Connect(function(value)
+		model:PivotTo(value)
+	end)
+
+	local TweenHandler = createTween(CFrameValue, tweenInfo, { Value = newPivot })
+
+	TweenHandler.Tween.Completed:Connect(function()
+		CFrameValue:Destroy()
+		if isFolder then
+			for _, part in ipairs(model:GetChildren()) do
+				if part:IsA("BasePart") then
+					part.Parent = target
+				end
+			end
+			model:Destroy()
+		end
+	end)
+
+	TweenHandler.Play()
+	return TweenHandler
+end
+
+--[=[
+    Tweens a given instance with specified properties.
+    @param target (Instance): The instance to tween.
+    @param tweenInfo (TweenInfo): The tween settings.
+    @param properties (table): The properties to change.
+    @param callback? (function): Optional function executed upon completion.
+    @return (Tween): The created tween object.
+]=]
+
+function TweenModule.CustomTween(
+	target: Instance,
+	tweenInfo: TweenInfo | string,
+	properties: { [string]: any },
+	callback: (() -> nil)?
+)
+	if typeof(tweenInfo) == "string" then
+		tweenInfo = ParseTweenProfile(tweenInfo)
+		if not tweenInfo then
+			HandleError("createTween", "Failed to parse TweenInfo string: " .. tweenInfo)
+			return nil
+		end
+	end
+
+	local success, Tween = pcall(function()
+		return TweenService:Create(target, tweenInfo, properties)
+	end)
+
+	if not success then
+		HandleError("createTween", Tween)
+		return nil
+	end
+
+	local Handle = {
+		Tween = Tween,
+		Play = function()
+			Tween:Play()
+		end,
+		Pause = function()
+			Tween:Pause()
+		end,
+		Resume = function()
+			Tween:Play()
+		end,
+		Cancel = function()
+			if Tween.PlaybackState ~= Enum.PlaybackState.Completed then
+				Tween:Cancel()
+			end
+			Tween:Destroy()
+			if TweenModule.Active then
+				TweenModule.Active[target] = nil
+			end
+		end,
+	}
+
+	TweenModule.Active = TweenModule.Active or {}
+	TweenModule.Active[target] = Handle
+
+	Tween.Completed:Once(function()
+		Handle.Cancel()
+		if callback then
+			callback()
+		end
+	end)
+
+	return Handle
+end
+
+--[=[
+    Chains multiple tweens to play one after another in sequence.
+    @param tweens { { instance: Instance, tweenInfo: TweenInfo | string, props: table } }
+    @param onComplete (() -> nil)? Optional callback when all tweens finish
+]=]
+
+function TweenModule.ChainTween(
+	tweens: { { instance: Instance, tweenInfo: TweenInfo | string, props: { [string]: any } } },
+	onComplete: (() -> nil)?
+)
+	task.spawn(function()
+		for _, TweenData in ipairs(tweens) do
+			local TweenHandler = createTween(TweenData.instance, TweenData.tweenInfo, TweenData.props)
+			local CompletedTween = false
+
+			TweenHandler.Tween.Completed:Once(function()
+				CompletedTween = true
+			end)
+
+			TweenHandler.Tween:Play()
+
+			repeat
+				task.wait()
+			until CompletedTween
+			TweenHandler.Tween:Destroy()
+		end
+
+		if onComplete then
+			onComplete()
+		end
+	end)
+end
+
+--[=[
+    Tweens the transparency of all BaseParts in a target.
+    @param target (PVInstance): The instance to affect.
+    @param tweenInfo (TweenInfo): The tween configuration.
+    @param Transparency (number): The target transparency (0-1).
+]=]
+
+function TweenModule.Transparency(target: PVInstance, tweenInfo: TweenInfo | string, Transparency: number)
+	for _, part in ipairs(getBaseParts(target)) do
+		createTween(part, tweenInfo, { Transparency = Transparency })
+	end
+end
+
+--[=[
+    Tweens all instances with a specific CollectionService tag.
+    @param tag string: The tag to search for
+    @param tweenInfo TweenInfo: Tween settings
+    @param properties table: The properties to tween
+    @param callback? (function): Optional callback after all tweens complete
+]=]
+
+function TweenModule.TweenTag(
+	tag: string,
+	tweenInfo: TweenInfo | string,
+	properties: { [string]: any },
+	callback: (() -> nil)?
+)
+	local CollectionTag = CollectionService:GetTagged(tag)
+	local TweensRemain = #CollectionTag
+
+	if TweensRemain == 0 then
+		if callback then
+			callback()
+		end
+		return
+	end
+
+	for _, instance in ipairs(CollectionTag) do
+		TweenModule.CustomTween(instance, tweenInfo, properties, function()
+			TweensRemain -= 1
+			if TweensRemain == 0 and callback then
+				callback()
+			end
+		end)
+	end
+end
+
+--[=[
+    Applies a shaking effect to a PVInstance.
+    @param target (PVInstance): The instance to shake.
+    @param duration (number): Duration of the shake (-1 for infinite).
+    @param intensity (number): The intensity of the shake.
+    @param individually (boolean): If true, shakes each part separately.
+    @return (function): A function to manually stop the shake.
+]=]
+
+function TweenModule.Shake(target: PVInstance, duration: number, intensity: number, individually: boolean)
+	local originalPivot = target:GetPivot()
+	local baseParts = getBaseParts(target)
+	local active = true
+	local startTime = os.clock()
+
+	local originalOffsets = {}
+
+	for _, part in ipairs(baseParts) do
+		originalOffsets[part] = part.CFrame
+	end
+
+	task.spawn(function()
+		while active do
+			task.wait(0.05)
+
+			if individually then
+				for _, part in ipairs(baseParts) do
+					local randomOffset = CFrame.new(
+						math.random(-intensity, intensity) / 10,
+						math.random(-intensity, intensity) / 10,
+						math.random(-intensity, intensity) / 10
+					)
+					part.CFrame = originalOffsets[part] * randomOffset
+				end
+			else
+				local randomOffset = CFrame.new(
+					math.random(-intensity, intensity) / 10,
+					math.random(-intensity, intensity) / 10,
+					math.random(-intensity, intensity) / 10
+				)
+				target:PivotTo(originalPivot * randomOffset)
+			end
+
+			if duration ~= -1 and (os.clock() - startTime) >= duration then
+				active = false
+			end
+		end
+
+		if individually then
+			for _, part in ipairs(baseParts) do
+				part.CFrame = originalOffsets[part]
+			end
+		else
+			target:PivotTo(originalPivot)
+		end
+	end)
+
+	return function()
+		active = false
+	end
+end
+
+--[=[
+    Scales a PVInstance with optional position adjustments.
+    @param target (PVInstance): The instance to scale.
+    @param tweenInfo (TweenInfo): The tween settings.
+    @param scaleTo (Vector3): The target scale.
+    @param adjustPosition (boolean): Adjusts position if true.
+    @param scaledByModel (boolean): If true, scales entire model.
+]=]
+
+function TweenModule.Scale(
+	target: PVInstance,
+	tweenInfo: TweenInfo | string,
+	scaleTo: Vector3,
+	adjustPosition: boolean,
+	scaledByModel: boolean
+)
+	if not scaledByModel then
+		for _, part in ipairs(getBaseParts(target)) do
+			local properties = { Size = part.Size + scaleTo }
+			if adjustPosition then
+				properties.Position = part.Position + (scaleTo / 2)
+			end
+			createTween(part, tweenInfo, properties)
+		end
+	else
+		if target:IsA("Model") then
+			local originalPosition = target:GetPivot().Position
+
+			for _, BasePart in pairs(getBaseParts(target)) do
+				local offset = BasePart.Position - originalPosition
+				local scaledOffset = offset * scaleTo
+				local newPosition = originalPosition + scaledOffset
+				local newSize = BasePart.Size * scaleTo
+
+				createTween(BasePart, tweenInfo, { Size = newSize, Position = newPosition })
+			end
+		else
+			error("scaledByModel was set to true, but target is not a model")
+		end
+	end
+end
+
+--[=[
+    Colors BasePart to the specified color.
+    @param target (PVInstance): The instance to color.
+    @param tweenInfo (TweenInfo): The tween settings.
+    @param ColorTo (Color3): The target color.
+]=]
+
+function TweenModule.Color(target: Model | BasePart, tweenInfo: TweenInfo | string, ColorTo: Color3)
+	for _, part in ipairs(getBaseParts(target)) do
+		createTween(part, tweenInfo, { Color = ColorTo })
+	end
+end
+
+--[=[
+    Rotates a PVInstance using tweens.
+    @param target (PVInstance): The instance to rotate.
+    @param tweenInfo (TweenInfo): The tween settings.
+    @param rotation (Vector3): Rotation values in degrees.
+    @param byPivot (boolean): If true, rotates using pivot.
+]=]
+
+function TweenModule.Rotate(target: PVInstance, tweenInfo: TweenInfo | string, rotation: Vector3, byPivot: boolean)
+	local originalPivot = target:GetPivot()
+	local rotationCFrame = CFrame.Angles(math.rad(rotation.X), math.rad(rotation.Y), math.rad(rotation.Z))
+
+	local newPivot = byPivot and (originalPivot * rotationCFrame)
+		or (rotationCFrame * (originalPivot - originalPivot.Position) + originalPivot.Position)
+
+	local CFrameValue = Instance.new("CFrameValue")
+	CFrameValue.Value = originalPivot
+
+	CFrameValue.Changed:Connect(function(value)
+		target:PivotTo(value)
+	end)
+
+	local TweenHandler = createTween(CFrameValue, tweenInfo, { Value = newPivot })
+	TweenHandler.Play()
+
+	TweenHandler.Tween.Completed:Connect(function()
+		CFrameValue:Destroy()
+	end)
+end
+
+--[=[
+    Animates an Instance with ColorSequence or NumberSequence | Instances for this function may be used for color (gradient possibly), transparency, and curveSize with easing.
+    @param target Beam | PVInstance The target beam or model containing beams.
+    @param tweenInfo TweenInfo Tween configuration with easing settings.
+    @param properties table<string, any> Table containing `Color`, `Transparency`, `CurveSize0`, or `CurveSize1` animations.
+    @param universal boolean If true, animates all Beams inside the target; otherwise, animates only the target.
+]=]
+
+function TweenModule.SequenceTween(
+	target: Instance,
+	tweenInfo: TweenInfo | string,
+	properties: { [string]: any },
+	universal: boolean
+)
+	local Sequences = {}
+
+	if universal then
+		if not target:IsA("Instance") then
+			error("Universal Mode: true | Requires an Instance.")
+		end
+		for _, descendant in ipairs(target:GetDescendants()) do
+			for property, _ in pairs(properties) do
+				local success, value = pcall(function()
+					return descendant[property]
+				end)
+				if success and value then
+					local propertyType = typeof(value)
+					if
+						propertyType == "ColorSequence"
+						or propertyType == "NumberSequence"
+						or propertyType == "Vector2"
+						or propertyType == "number"
+					then
+						table.insert(Sequences, descendant)
+						break
+					end
+				end
+			end
+		end
+	else
+		table.insert(Sequences, target)
+	end
+
+	for _, instance in ipairs(Sequences) do
+		for property, targetValue in pairs(properties) do
+			local success, startValue = pcall(function()
+				return instance[property]
+			end)
+			if success and startValue then
+				task.spawn(function()
+					interpolateProperty(
+						instance,
+						property,
+						tweenInfo.Time,
+						targetValue,
+						tweenInfo.EasingStyle,
+						tweenInfo.EasingDirection,
+						tweenInfo.RepeatCount,
+						tweenInfo.Reverses,
+						tweenInfo.DelayTime,
+						lerpProperty
+					)
+				end)
+			end
+		end
+	end
+end
+
+TweenModule.Presets = {
+	FadeOut = function(target: Instance, duration: number?)
+		return createTween(target, TweenInfo.new(duration or 0.5), { Transparency = 1 })
+	end,
+
+	FlashColor = function(target: BasePart, color: Color3, duration: number?)
+		local originalColor = target.Color
+		duration = duration or 0.1
+
+		createTween(target, TweenInfo.new(duration), { Color = color }).Tween.Completed:Once(function()
+			createTween(target, TweenInfo.new(duration), { Color = originalColor })
+		end)
+	end,
+
+	FlashTransparency = function(target: Instance, FlashTo: number, duration: number?)
+		duration = duration or 0.1
+		local original = target.Transparency
+
+		createTween(target, TweenInfo.new(duration), { Transparency = FlashTo }).Tween.Completed:Once(function()
+			createTween(target, TweenInfo.new(duration), { Transparency = original })
+		end)
+	end,
+
+	Pop = function(target: PVInstance, scale: number?, duration: number?)
+		scale = scale or 1.2
+		duration = duration or 0.1
+
+		local baseParts = target:IsA("Model") and target:GetDescendants() or { target }
+		for _, part in ipairs(baseParts) do
+			if part:IsA("BasePart") then
+				local originalSize = part.Size
+				local enlarged = originalSize * scale
+
+				createTween(part, TweenInfo.new(duration), { Size = enlarged }).Tween.Completed:Once(function()
+					createTween(part, TweenInfo.new(duration), { Size = originalSize })
+				end)
+			end
+		end
+	end,
+}
+
+export type GroupHandle = {
+	Add: (self: GroupHandle, ...Instance) -> (),
+	Remove: (self: GroupHandle, ...Instance) -> (),
+
+	Move: (self: GroupHandle, tweenInfo: TweenInfo | string, movement: CFrame | Vector3, byPivot: boolean) -> any,
+	Color: (self: GroupHandle, tweenInfo: TweenInfo | string, colorTo: Color3) -> any,
+	Rotate: (self: GroupHandle, tweenInfo: TweenInfo | string, rotation: Vector3, byPivot: boolean) -> any,
+	Scale: (
+		self: GroupHandle,
+		tweenInfo: TweenInfo | string,
+		scaleTo: Vector3,
+		adjustPosition: boolean,
+		scaledByModel: boolean
+	) -> any,
+	Transparency: (self: GroupHandle, tweenInfo: TweenInfo | string, transparency: number) -> any,
+	Shake: (self: GroupHandle, duration: number, intensity: number, individually: boolean) -> () -> (),
+	CustomTween: (self: GroupHandle, tweenInfo: TweenInfo, properties: { [string]: any }, callback: (() -> ())?) -> any,
+	ChainTween: (
+		self: GroupHandle,
+		tweens: { { instance: Instance, tweenInfo: TweenInfo, props: { [string]: any } } },
+		onComplete: (() -> ())?
+	) -> (),
+	SequenceTween: (self: GroupHandle, tweenInfo: TweenInfo, properties: { [string]: any }, universal: boolean) -> (),
+}
+
+function TweenModule.Groups.new(...): GroupHandle
+	local Instances = { ... }
+	local GroupHandle = {}
+
+	function GroupHandle:Add(...)
+		local AddInstances = { ... }
+		for _, inst in ipairs(AddInstances) do
+			if typeof(inst) == "Instance" and inst.Parent then
+				table.insert(Instances, inst)
+			end
+		end
+	end
+
+	function GroupHandle:Remove(...)
+		local RemoveInstances = { ... }
+		for _, target in ipairs(RemoveInstances) do
+			for i = #Instances, 1, -1 do
+				if Instances[i] == target then
+					table.remove(Instances, i)
+					break
+				end
+			end
+		end
+	end
+
+	setmetatable(GroupHandle, {
+		__index = function(_, Method)
+			local TweenFunction = TweenModule[Method]
+
+			if typeof(TweenFunction) == "function" then
+				return function(_, ...)
+					local args = { ... }
+					for _, inst in ipairs(Instances) do
+						pcall(function()
+							TweenFunction(inst, table.unpack(args))
+						end)
+					end
+				end
+			end
+
+			return nil
+		end,
+	})
+
+	return GroupHandle
+end
+
+for _, Action in ipairs({ "Pause", "Resume", "Cancel" }) do
+	TweenModule[Action .. "All"] = function()
+		for _, Handler in pairs(TweenModule.Active) do
+			if Handler and Handler[Action] then
+				Handler[Action]()
+			end
+		end
+	end
+end
+
+for FunctionName, Function in pairs(TweenModule.Presets) do
+	TweenModule[FunctionName] = Function
+end
+
+return TweenModule
