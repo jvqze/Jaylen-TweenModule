@@ -8,6 +8,7 @@ includeReadme = true
 
 [docusaurus]
 favicon = "https://us-east-1.tixte.net/uploads/cdn.jaylen.nyc/TweenModuleImage.png"
+
 url = "https://jvqze.github.io"
 baseUrl = "/Jaylen-TweenModule"
 
