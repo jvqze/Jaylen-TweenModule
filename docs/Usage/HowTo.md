@@ -5,7 +5,7 @@ Welcome to **Jaylen's TweenModule** — a powerful and flexible tweening utility
 - Custom easing profile strings like `"SineOut:1.5:0:true:0"`
 - Group tweening for multiple models or parts
 - Folder support (folders are treated like models)
-- Built-in utility functions like `:Move`, `:Color`, `:Scale`, `:Rotate`, `:Shake`, and more
+- Built-in utility functions like `.Move`, `.Color`, `.Scale`, `.Rotate`, `.Shake`, and more
 
 ## Getting Started
 
@@ -15,7 +15,7 @@ Before doing anything with your code, you need to identify TweenModule.
 local TweenModule = require(Path.To.TweenModule)
 ```
 
-:::danger Are you using this TweenModule and receiving an error about a Script not implementing Runtime?
+:::danger Are you using this TweenModule for TRIA.os and receiving an error about a Script not implementing Runtime?
 If you're using this specifically for **[TRIA.os](https://www.roblox.com/games/6311279644/TRIA-os-Escape)**, go to the `TweenModule` and put this on line 1
 :::
 
