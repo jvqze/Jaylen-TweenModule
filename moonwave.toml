@@ -1,4 +1,4 @@
-title = "Jaylen's TweenModule Documentation" 
+title = "Jaylen's TweenModule Documentation"
 GitRepoUrl = "https://github.com/jvqze/Jaylen-TweenModule"
 gitSourceBranch = "master"
 
@@ -10,7 +10,7 @@ includeReadme = true
 favicon = "https://us-east-1.tixte.net/uploads/cdn.jaylen.nyc/TweenModuleImage.png"
 
 url = "https://jvqze.github.io"
-baseUrl = "/Jaylen-TweenModule"
+baseUrl = "/Jaylen-TweenModule/"
 
 [footer]
 style = "dark"
