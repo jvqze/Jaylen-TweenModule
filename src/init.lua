@@ -1,5 +1,4 @@
-require(game:GetService("ServerScriptService").Runtime):Init()
--- You can remove the line above if you're not using this for TRIA.os or playing on TRIA.os.
+-- If you need to add RunTime, copy the line via Documentation and replace this line with that
 
 local CollectionService = game:GetService("CollectionService")
 local TweenService = game:GetService("TweenService")
