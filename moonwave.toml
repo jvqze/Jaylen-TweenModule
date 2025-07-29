@@ -6,5 +6,8 @@ gitSourceBranch = "master"
 enabled = true
 includeReadme = true
 
+[docusaurus]
+favicon = "https://us-east-1.tixte.net/uploads/cdn.jaylen.nyc/TweenModuleImage.png"
+
 [footer]
 style = "dark"

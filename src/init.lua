@@ -1,4 +1,5 @@
---require(game:GetService("ServerScriptService").Runtime):Init()
+require(game:GetService("ServerScriptService").Runtime):Init()
+-- You can remove the line above if you're not using this for TRIA.os or playing on TRIA.os.
 
 local CollectionService = game:GetService("CollectionService")
 local TweenService = game:GetService("TweenService")
@@ -911,6 +912,10 @@ end
 	@param properties { [string]: any } -- Table of properties to tween. Supports `Color`, `Transparency`, `CurveSize0`, `CurveSize1`.
 	@param universal boolean -- If true, recursively applies to all Beams inside the target.
 
+	:::caution Use this function with caution!
+	This function has only been tested with Beams and their properties. Other instances may not work as expected but will be continously worked on if any issues arise.
+	:::
+
 	**Example:**
 	```lua
 	-- Animate all beams in a model to fade transparency over 2 seconds
@@ -931,7 +936,6 @@ function TweenModule.SequenceTween(
 	properties: { [string]: any },
 	universal: boolean
 )
-	-- Convert profile string if needed
 	if typeof(tweenInfo) == "string" then
 		tweenInfo = ParseTweenProfile(tweenInfo)
 		if not tweenInfo then
@@ -994,47 +998,6 @@ function TweenModule.SequenceTween(
 	end
 end
 
-TweenModule.Presets = {
-	FadeOut = function(target: Instance, duration: number?)
-		return createTween(target, TweenInfo.new(duration or 0.5), { Transparency = 1 })
-	end,
-
-	FlashColor = function(target: BasePart, color: Color3, duration: number?)
-		local originalColor = target.Color
-		duration = duration or 0.1
-
-		createTween(target, TweenInfo.new(duration), { Color = color }).Tween.Completed:Once(function()
-			createTween(target, TweenInfo.new(duration), { Color = originalColor })
-		end)
-	end,
-
-	FlashTransparency = function(target: Instance, FlashTo: number, duration: number?)
-		duration = duration or 0.1
-		local original = target.Transparency
-
-		createTween(target, TweenInfo.new(duration), { Transparency = FlashTo }).Tween.Completed:Once(function()
-			createTween(target, TweenInfo.new(duration), { Transparency = original })
-		end)
-	end,
-
-	Pop = function(target: PVInstance, scale: number?, duration: number?)
-		scale = scale or 1.2
-		duration = duration or 0.1
-
-		local baseParts = target:IsA("Model") and target:GetDescendants() or { target }
-		for _, part in ipairs(baseParts) do
-			if part:IsA("BasePart") then
-				local originalSize = part.Size
-				local enlarged = originalSize * scale
-
-				createTween(part, TweenInfo.new(duration), { Size = enlarged }).Tween.Completed:Once(function()
-					createTween(part, TweenInfo.new(duration), { Size = originalSize })
-				end)
-			end
-		end
-	end,
-}
-
 export type GroupHandler = {
 	Add: (self: GroupHandler, ...Instance) -> (),
 	Remove: (self: GroupHandler, ...Instance) -> (),
@@ -1093,6 +1056,14 @@ function TweenModule.Groups.new(...): GroupHandler
 	local Instances = { ... }
 	local GroupHandler = {}
 
+	--[=[
+	@within GroupHandler
+	@method Add
+	Adds instances to the group.
+
+	@param ... Instance -- Instances to add.
+	]=]
+
 	function GroupHandler:Add(...)
 		local AddInstances = { ... }
 		for _, inst in ipairs(AddInstances) do
@@ -1101,6 +1072,14 @@ function TweenModule.Groups.new(...): GroupHandler
 			end
 		end
 	end
+
+	--[=[
+	@within GroupHandler
+	@method Remove
+	Removes instances from the group.
+
+	@param ... Instance -- Instances to remove.
+	]=]
 
 	function GroupHandler:Remove(...)
 		local RemoveInstances = { ... }
@@ -1144,10 +1123,6 @@ for _, Action in ipairs({ "Pause", "Resume", "Cancel" }) do
 			end
 		end
 	end
-end
-
-for FunctionName, Function in pairs(TweenModule.Presets) do
-	TweenModule[FunctionName] = Function
 end
 
 return TweenModule
