@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkdocs=self.webpackChunkdocs||[]).push([[986],{4410:e=>{e.exports=JSON.parse('{"sourceUrl":"https://github.com/jvqze/Jaylen-s-TweenModule/blob/master","baseUrl":"/Jaylen-s-TweenModule/","classOrder":[],"apiCategories":[]}')}}]);
