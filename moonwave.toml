@@ -1,0 +1,10 @@
+title = "Jaylen's TweenModule Documentation" 
+GitRepoUrl = "https://github.com/jvqze/Jaylen-TweenModule"
+gitSourceBranch = "master"
+
+[home]
+enabled = true
+includeReadme = true
+
+[footer]
+style = "dark"

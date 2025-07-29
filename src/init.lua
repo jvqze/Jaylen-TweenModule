@@ -4,9 +4,12 @@ local CollectionService = game:GetService("CollectionService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
---- @class TweenModule
---- A module for creating and managing tweens in Roblox.
---- Provides functions for movement, scaling, rotation, transparency, shaking, and color transitions.
+--[=[
+	@class TweenModule
+	@tag TweenModule
+	A module for creating and managing tweens in Roblox.
+	Provides group tweening, custom profiles, tag-based tweens, and more.
+]=]
 
 local TweenModule = {}
 TweenModule.Active = {}
@@ -362,11 +365,28 @@ local function interpolateProperty(
 end
 
 --[=[
-    Moves a PVInstance to a new position using tweens.
-    @param target (PVInstance): The instance to move.
-    @param tweenInfo (TweenInfo | string): The tween settings.
-    @param movement (CFrame): The movement offset.
-    @param byPivot (boolean): If true, moves using pivot.
+	@within TweenModule
+	@function Move
+	Moves a PVInstance (Model, Folder, or BasePart) to a new position using tweens.
+
+	@param target PVInstance -- The instance to move.
+	@param tweenInfo TweenInfo | string -- The tween settings or profile string (e.g. `"SineOut:1.5"`).
+	@param movement CFrame | Vector3
+	@param byPivot boolean -- If true, applies movement relative to pivot.
+
+	@return TweenHandle -- Returns the handler for the tween.
+
+	**Example:**
+	```lua
+	local Part = workspace.MyPart
+	local Model = workspace.MyModel
+
+	-- Move a part upward by 10 studs over 1 second
+	TweenModule.Move(Part, "QuadOut:1", Vector3.new(0, 10, 0), false)
+
+	-- Move a model forward relative to its pivot
+	TweenModule.Move(Model, "SineInOut:2", CFrame.new(0, 0, -20), true)
+	```
 ]=]
 
 function TweenModule.Move(
@@ -429,12 +449,30 @@ function TweenModule.Move(
 end
 
 --[=[
-    Tweens a given instance with specified properties.
-    @param target (Instance): The instance to tween.
-    @param tweenInfo (TweenInfo): The tween settings.
-    @param properties (table): The properties to change.
-    @param callback? (function): Optional function executed upon completion.
-    @return (Tween): The created tween object.
+	@within TweenModule
+	@function CustomTween
+	Tweens a given instance with specified properties and optional completion callback.
+
+	@param target Instance -- The instance to tween.
+	@param tweenInfo TweenInfo | string -- The tween settings, or a profile string like `"SineOut:1.5"`.
+	@param properties { [string]: any } -- The properties to tween.
+	@param callback? (() -> nil) -- Optional function to call when the tween completes.
+
+	@return TweenHandle -- A table containing control methods like `Play`, `Pause`, and `Cancel`.
+
+	**Example:**
+	```lua
+	local Handle = TweenModule.CustomTween(workspace.Part, "QuadInOut:2", {
+		Transparency = 1,
+		Color = Color3.new(1, 0, 0),
+	}, function()
+		print("Tween finished!")
+	end)
+
+	Handle.Pause() -- Pauses the tween
+	task.wait(1)
+	Handle.Resume() -- Resumes the tween
+	```
 ]=]
 
 function TweenModule.CustomTween(
@@ -496,9 +534,30 @@ function TweenModule.CustomTween(
 end
 
 --[=[
-    Chains multiple tweens to play one after another in sequence.
-    @param tweens { { instance: Instance, tweenInfo: TweenInfo | string, props: table } }
-    @param onComplete (() -> nil)? Optional callback when all tweens finish
+	@within TweenModule
+	@function ChainTween
+	Chains multiple tweens to play one after another in sequence.
+
+	@param tweens { { instance: Instance, tweenInfo: TweenInfo | string, props: { [string]: any } } } -- A list of tween configs to apply in sequence.
+	@param onComplete (() -> nil)? -- Optional callback function called after all tweens complete.
+
+	**Example:**
+	```lua
+	TweenModule.ChainTween({
+		{
+			instance = workspace.Part1,
+			tweenInfo = "SineOut:1",
+			props = { Position = Vector3.new(0, 10, 0) },
+		},
+		{
+			instance = workspace.Part2,
+			tweenInfo = "SineIn:1",
+			props = { Position = Vector3.new(0, 0, 0) },
+		},
+	}, function()
+		print("Chain finished!")
+	end)
+	```
 ]=]
 
 function TweenModule.ChainTween(
@@ -529,10 +588,18 @@ function TweenModule.ChainTween(
 end
 
 --[=[
-    Tweens the transparency of all BaseParts in a target.
-    @param target (PVInstance): The instance to affect.
-    @param tweenInfo (TweenInfo): The tween configuration.
-    @param Transparency (number): The target transparency (0-1).
+	@within TweenModule
+	@function Transparency
+	Tweens the transparency of all BaseParts in a target.
+
+	@param target PVInstance -- The instance (Model, BasePart, or Folder) whose BaseParts' transparency will be affected.
+	@param tweenInfo TweenInfo | string -- The TweenInfo.new() settings or a string profile (e.g. "SineOut:1.5").
+	@param Transparency number -- The target transparency value between 0 and 1.
+
+	**Example:**
+	```lua
+	TweenModule.Transparency(workspace.Model, "QuadInOut:0.5", 1)
+	```
 ]=]
 
 function TweenModule.Transparency(target: PVInstance, tweenInfo: TweenInfo | string, Transparency: number)
@@ -542,11 +609,21 @@ function TweenModule.Transparency(target: PVInstance, tweenInfo: TweenInfo | str
 end
 
 --[=[
-    Tweens all instances with a specific CollectionService tag.
-    @param tag string: The tag to search for
-    @param tweenInfo TweenInfo: Tween settings
-    @param properties table: The properties to tween
-    @param callback? (function): Optional callback after all tweens complete
+	@within TweenModule
+	@function TweenTag
+	Tweens all instances with a specific CollectionService tag using the provided tween settings and property goals.
+
+	@param tag string -- The tag to search for using CollectionService.
+	@param tweenInfo TweenInfo | string -- The tween settings or a profile string (e.g. "SineOut:1.5").
+	@param properties { [string]: any } -- A table of property goals to tween.
+	@param callback? (() -> nil) -- Optional function called after all tagged tweens complete.
+
+	**Example:**
+	```lua
+	TweenModule.TweenTag("HighlightParts", "BackInOut:1.2", { Transparency = 0.25 }, function()
+		print("All tagged parts have finished tweening.")
+	end)
+	```
 ]=]
 
 function TweenModule.TweenTag(
@@ -576,12 +653,26 @@ function TweenModule.TweenTag(
 end
 
 --[=[
-    Applies a shaking effect to a PVInstance.
-    @param target (PVInstance): The instance to shake.
-    @param duration (number): Duration of the shake (-1 for infinite).
-    @param intensity (number): The intensity of the shake.
-    @param individually (boolean): If true, shakes each part separately.
-    @return (function): A function to manually stop the shake.
+	@within TweenModule
+	@function Shake
+	Applies a shaking effect to a PVInstance for a set duration and intensity.
+
+	@param target PVInstance -- The instance or model to apply the shake effect to.
+	@param duration number -- The total time in seconds the shake lasts (`-1` for infinite shake).
+	@param intensity number -- How strong the shake is (higher = more jitter).
+	@param individually boolean -- If true, shakes each BasePart individually; otherwise, shakes the entire model via pivot.
+
+	@return () -> () -- A function that can be called to manually stop the shake.
+
+	**Example:**
+	```lua
+	local StopShake = TweenModule.Shake(workspace.Model, 2, 6, true) -- Will shake the model for 2 seconds with intensity 6 and each part individually.
+
+	-- Stop early after 1 second
+	task.delay(1, function()
+		StopShake()
+	end)
+	```
 ]=]
 
 function TweenModule.Shake(target: PVInstance, duration: number, intensity: number, individually: boolean)
@@ -638,12 +729,24 @@ function TweenModule.Shake(target: PVInstance, duration: number, intensity: numb
 end
 
 --[=[
-    Scales a PVInstance with optional position adjustments.
-    @param target (PVInstance): The instance to scale.
-    @param tweenInfo (TweenInfo): The tween settings.
-    @param scaleTo (Vector3): The target scale.
-    @param adjustPosition (boolean): Adjusts position if true.
-    @param scaledByModel (boolean): If true, scales entire model.
+	@within TweenModule
+	@function Scale
+	Scales a PVInstance's BaseParts by a Vector3 value, optionally adjusting position.
+
+	@param target PVInstance -- The instance to scale (Model, Folder, or BasePart).
+	@param tweenInfo TweenInfo | string -- The tween settings or a string profile (e.g., "SineOut:1.5").
+	@param scaleTo Vector3 -- The amount to scale by (additive for per-part, multiplicative for models).
+	@param adjustPosition boolean -- If true, adjusts each part’s position to compensate for scaling.
+	@param scaledByModel boolean -- If true, scales the whole model using pivot math. Requires `target:IsA("Model")`.
+
+	**Example:**
+	```lua
+	-- Scale up each part in a folder by (2, 2, 2) and shift positions
+	TweenModule.Scale(workspace.BuildingParts, "InOutQuad:1.25", Vector3.new(2, 2, 2), true, false)
+
+	-- Uniformly scale a model from its pivot point
+	TweenModule.Scale(workspace.CarModel, "SineOut:1.5", Vector3.new(1.2, 1.2, 1.2), false, true)
+	```
 ]=]
 
 function TweenModule.Scale(
@@ -680,28 +783,94 @@ function TweenModule.Scale(
 end
 
 --[=[
-    Colors BasePart to the specified color.
-    @param target (PVInstance): The instance to color.
-    @param tweenInfo (TweenInfo): The tween settings.
-    @param ColorTo (Color3): The target color.
+	@within TweenModule
+	@function Color
+	Animates the color of all BaseParts within a PVInstance to a target color.
+
+	@param target PVInstance -- The instance to color (Model, Folder, or BasePart).
+	@param tweenInfo TweenInfo | string -- The tween configuration or a string profile (e.g. `"OutBounce:1"`).
+	@param ColorTo Color3 | BrickColor | string -- The target color (can be Color3, BrickColor, or hex string like `"#ff0040"`).
+
+	**Example:**
+	```lua
+	-- Tween to bright red using a string profile
+	TweenModule.Color(workspace.Model, "QuadOut:1", "#ff0040")
+
+	-- Tween to BrickColor
+	TweenModule.Color(workspace.Model, "QuadOut:1", BrickColor.new("Bright red"))
+
+	-- Tween to Color3 directly
+	TweenModule.Color(workspace.Model, "QuadOut:1", Color3.fromRGB(0, 255, 150))
+	```
 ]=]
 
-function TweenModule.Color(target: Model | BasePart, tweenInfo: TweenInfo | string, ColorTo: Color3)
+function TweenModule.Color(
+	target: Model | BasePart,
+	tweenInfo: TweenInfo | string,
+	ColorTo: Color3 | BrickColor | string
+)
+	local ResolvedColor: Color3
+
+	if typeof(ColorTo) == "BrickColor" then
+		ResolvedColor = ColorTo.Color
+	elseif typeof(ColorTo) == "string" then
+		if ColorTo:match("^#%x%x%x%x%x%x$") then
+			local r, g, b = ColorTo:match("^#(%x%x)(%x%x)(%x%x)$")
+			ResolvedColor = Color3.fromRGB(tonumber(r, 16), tonumber(g, 16), tonumber(b, 16))
+		else
+			local ok, Brick = pcall(BrickColor.new, ColorTo)
+			if ok then
+				ResolvedColor = Brick.Color
+			else
+				LogError("Invalid Color", `Invalid color string: "{ColorTo}"`)
+			end
+		end
+	elseif typeof(ColorTo) == "Color3" then
+		ResolvedColor = ColorTo
+	else
+		LogError("Invalid Color", `Unsupported color type: {typeof(ColorTo)}`)
+	end
+
 	for _, part in ipairs(getBaseParts(target)) do
-		createTween(part, tweenInfo, { Color = ColorTo })
+		createTween(part, tweenInfo, { Color = ResolvedColor })
 	end
 end
 
 --[=[
-    Rotates a PVInstance using tweens.
-    @param target (PVInstance): The instance to rotate.
-    @param tweenInfo (TweenInfo): The tween settings.
-    @param rotation (Vector3): Rotation values in degrees.
-    @param byPivot (boolean): If true, rotates using pivot.
+	@within TweenModule
+	@function Rotate
+	Rotates a PVInstance (Model, Folder, or BasePart) using tweens.
+
+	@param target PVInstance -- The instance to rotate.
+	@param tweenInfo TweenInfo | string -- The tween settings or a profile string (e.g. `"SineInOut:1"`).
+	@param rotation Vector3 -- The rotation in degrees (X, Y, Z).
+	@param byPivot boolean -- If true, rotates around the current pivot point.
+
+	**Example:**
+	```lua
+	TweenModule.Rotate(workspace.MyModelIWantRotatedNOW, "SineOut:1", Vector3.new(0, 90, 0), true)
+	```
 ]=]
 
 function TweenModule.Rotate(target: PVInstance, tweenInfo: TweenInfo | string, rotation: Vector3, byPivot: boolean)
-	local originalPivot = target:GetPivot()
+	local isFolder = target:IsA("Folder")
+	local model = target
+
+	if isFolder then
+		model = Instance.new("Model")
+		model.Name = "[TempRotateModel]"
+		model.Parent = workspace
+
+		for _, child in ipairs(target:GetChildren()) do
+			if child:IsA("BasePart") then
+				child.Parent = model
+			end
+		end
+
+		model:PivotTo(target:GetPivot())
+	end
+
+	local originalPivot = model:GetPivot()
 	local rotationCFrame = CFrame.Angles(math.rad(rotation.X), math.rad(rotation.Y), math.rad(rotation.Z))
 
 	local newPivot = byPivot and (originalPivot * rotationCFrame)
@@ -711,23 +880,49 @@ function TweenModule.Rotate(target: PVInstance, tweenInfo: TweenInfo | string, r
 	CFrameValue.Value = originalPivot
 
 	CFrameValue.Changed:Connect(function(value)
-		target:PivotTo(value)
+		model:PivotTo(value)
 	end)
 
 	local TweenHandler = createTween(CFrameValue, tweenInfo, { Value = newPivot })
-	TweenHandler.Play()
 
 	TweenHandler.Tween.Completed:Connect(function()
 		CFrameValue:Destroy()
+
+		if isFolder then
+			for _, part in ipairs(model:GetChildren()) do
+				if part:IsA("BasePart") then
+					part.Parent = target
+				end
+			end
+			model:Destroy()
+		end
 	end)
+
+	TweenHandler.Play()
 end
 
 --[=[
-    Animates an Instance with ColorSequence or NumberSequence | Instances for this function may be used for color (gradient possibly), transparency, and curveSize with easing.
-    @param target Beam | PVInstance The target beam or model containing beams.
-    @param tweenInfo TweenInfo Tween configuration with easing settings.
-    @param properties table<string, any> Table containing `Color`, `Transparency`, `CurveSize0`, or `CurveSize1` animations.
-    @param universal boolean If true, animates all Beams inside the target; otherwise, animates only the target.
+	@within TweenModule
+	@function SequenceTween
+	Animates properties of Beams or their descendants using NumberSequence or ColorSequence with easing.
+
+	@param target Instance -- A Beam, Model, Folder, or other container.
+	@param tweenInfo TweenInfo | string -- The easing configuration or a string profile (e.g. `"QuadInOut:1.5"`).
+	@param properties { [string]: any } -- Table of properties to tween. Supports `Color`, `Transparency`, `CurveSize0`, `CurveSize1`.
+	@param universal boolean -- If true, recursively applies to all Beams inside the target.
+
+	**Example:**
+	```lua
+	-- Animate all beams in a model to fade transparency over 2 seconds
+	TweenModule.SequenceTween(workspace.MyBeamGroup, "SineOut:2", {
+		Transparency = NumberSequence.new(1)
+	}, true)
+
+	-- Animate a single beam's color
+	TweenModule.SequenceTween(myBeam, "QuadIn:1.5", {
+		Color = ColorSequence.new(Color3.new(1, 0, 0))
+	}, false)
+	```
 ]=]
 
 function TweenModule.SequenceTween(
@@ -736,6 +931,15 @@ function TweenModule.SequenceTween(
 	properties: { [string]: any },
 	universal: boolean
 )
+	-- Convert profile string if needed
+	if typeof(tweenInfo) == "string" then
+		tweenInfo = ParseTweenProfile(tweenInfo)
+		if not tweenInfo then
+			HandleError("SequenceTween", "Invalid tweenInfo profile string")
+			return
+		end
+	end
+
 	local Sequences = {}
 
 	if universal then
@@ -831,36 +1035,65 @@ TweenModule.Presets = {
 	end,
 }
 
-export type GroupHandle = {
-	Add: (self: GroupHandle, ...Instance) -> (),
-	Remove: (self: GroupHandle, ...Instance) -> (),
+export type GroupHandler = {
+	Add: (self: GroupHandler, ...Instance) -> (),
+	Remove: (self: GroupHandler, ...Instance) -> (),
 
-	Move: (self: GroupHandle, tweenInfo: TweenInfo | string, movement: CFrame | Vector3, byPivot: boolean) -> any,
-	Color: (self: GroupHandle, tweenInfo: TweenInfo | string, colorTo: Color3) -> any,
-	Rotate: (self: GroupHandle, tweenInfo: TweenInfo | string, rotation: Vector3, byPivot: boolean) -> any,
+	Move: (self: GroupHandler, tweenInfo: TweenInfo | string, movement: CFrame | Vector3, byPivot: boolean) -> any,
+	Color: (self: GroupHandler, tweenInfo: TweenInfo | string, colorTo: Color3) -> any,
+	Rotate: (self: GroupHandler, tweenInfo: TweenInfo | string, rotation: Vector3, byPivot: boolean) -> any,
 	Scale: (
-		self: GroupHandle,
+		self: GroupHandler,
 		tweenInfo: TweenInfo | string,
 		scaleTo: Vector3,
 		adjustPosition: boolean,
 		scaledByModel: boolean
 	) -> any,
-	Transparency: (self: GroupHandle, tweenInfo: TweenInfo | string, transparency: number) -> any,
-	Shake: (self: GroupHandle, duration: number, intensity: number, individually: boolean) -> () -> (),
-	CustomTween: (self: GroupHandle, tweenInfo: TweenInfo, properties: { [string]: any }, callback: (() -> ())?) -> any,
+	Transparency: (self: GroupHandler, tweenInfo: TweenInfo | string, transparency: number) -> any,
+	Shake: (self: GroupHandler, duration: number, intensity: number, individually: boolean) -> () -> (),
+	CustomTween: (
+		self: GroupHandler,
+		tweenInfo: TweenInfo,
+		properties: { [string]: any },
+		callback: (() -> ())?
+	) -> any,
 	ChainTween: (
-		self: GroupHandle,
+		self: GroupHandler,
 		tweens: { { instance: Instance, tweenInfo: TweenInfo, props: { [string]: any } } },
 		onComplete: (() -> ())?
 	) -> (),
-	SequenceTween: (self: GroupHandle, tweenInfo: TweenInfo, properties: { [string]: any }, universal: boolean) -> (),
+	SequenceTween: (self: GroupHandler, tweenInfo: TweenInfo, properties: { [string]: any }, universal: boolean) -> (),
 }
 
-function TweenModule.Groups.new(...): GroupHandle
-	local Instances = { ... }
-	local GroupHandle = {}
+--[=[
+	@class GroupHandler
+	@tag GroupHandler
+	A handle returned by `TweenModule.Groups.new(...)` that lets you tween multiple instances at once using the same methods as TweenModule.
+	Also provides utility methods like `Add` and `Remove`.
 
-	function GroupHandle:Add(...)
+	**Example:**
+	```lua
+	local TweenModule = require(Path.To.TweenModule)
+	local Groups = TweenModule.Groups
+
+	local MyFirstEverGroup = Groups.new(workspace.Part1, workspace.Part2)
+
+	for i = 1, 10 do
+		task.wait(0.15)
+		MyFirstEverGroup:Move("SineOut:0.15", CFrame.new(0, 5, 0), false)
+
+		if i == 5 then
+			MyFirstEverGroup:Add(workspace.Part3)
+		end
+	end
+	```
+]=]
+
+function TweenModule.Groups.new(...): GroupHandler
+	local Instances = { ... }
+	local GroupHandler = {}
+
+	function GroupHandler:Add(...)
 		local AddInstances = { ... }
 		for _, inst in ipairs(AddInstances) do
 			if typeof(inst) == "Instance" and inst.Parent then
@@ -869,7 +1102,7 @@ function TweenModule.Groups.new(...): GroupHandle
 		end
 	end
 
-	function GroupHandle:Remove(...)
+	function GroupHandler:Remove(...)
 		local RemoveInstances = { ... }
 		for _, target in ipairs(RemoveInstances) do
 			for i = #Instances, 1, -1 do
@@ -881,7 +1114,7 @@ function TweenModule.Groups.new(...): GroupHandle
 		end
 	end
 
-	setmetatable(GroupHandle, {
+	setmetatable(GroupHandler, {
 		__index = function(_, Method)
 			local TweenFunction = TweenModule[Method]
 
@@ -900,7 +1133,7 @@ function TweenModule.Groups.new(...): GroupHandle
 		end,
 	})
 
-	return GroupHandle
+	return GroupHandler
 end
 
 for _, Action in ipairs({ "Pause", "Resume", "Cancel" }) do
