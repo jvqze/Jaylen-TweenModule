@@ -367,14 +367,15 @@ end
 --[=[
 	@within TweenModule
 	@function Move
+	@since 1.0.0
 	Moves a PVInstance (Model, Folder, or BasePart) to a new position using tweens.
 
-	@param target PVInstance -- The instance to move.
-	@param tweenInfo TweenInfo | string -- The tween settings or profile string (e.g. `"SineOut:1.5"`).
+	@param target PVInstance
+	@param tweenInfo TweenInfo | string
 	@param movement CFrame | Vector3
-	@param byPivot boolean -- If true, applies movement relative to pivot.
+	@param byPivot boolean
 
-	@return TweenHandle -- Returns the handler for the tween.
+	@return TweenHandle
 
 	**Example:**
 	```lua
@@ -451,14 +452,15 @@ end
 --[=[
 	@within TweenModule
 	@function CustomTween
+	@since 1.0.0
 	Tweens a given instance with specified properties and optional completion callback.
 
-	@param target Instance -- The instance to tween.
-	@param tweenInfo TweenInfo | string -- The tween settings, or a profile string like `"SineOut:1.5"`.
-	@param properties { [string]: any } -- The properties to tween.
-	@param callback? (() -> nil) -- Optional function to call when the tween completes.
+	@param target Instance
+	@param tweenInfo TweenInfo | string
+	@param properties { [string]: any }
+	@param callback? (() -> nil)
 
-	@return TweenHandle -- A table containing control methods like `Play`, `Pause`, and `Cancel`.
+	@return TweenHandle
 
 	**Example:**
 	```lua
@@ -536,6 +538,7 @@ end
 --[=[
 	@within TweenModule
 	@function ChainTween
+	@since 2.0.0
 	Chains multiple tweens to play one after another in sequence.
 
 	@param tweens { { instance: Instance, tweenInfo: TweenInfo | string, props: { [string]: any } } } -- A list of tween configs to apply in sequence.
@@ -590,6 +593,7 @@ end
 --[=[
 	@within TweenModule
 	@function Transparency
+	@since 1.0.0
 	Tweens the transparency of all BaseParts in a target.
 
 	@param target PVInstance -- The instance (Model, BasePart, or Folder) whose BaseParts' transparency will be affected.
@@ -611,12 +615,13 @@ end
 --[=[
 	@within TweenModule
 	@function TweenTag
+	@since 2.0.0
 	Tweens all instances with a specific CollectionService tag using the provided tween settings and property goals.
 
-	@param tag string -- The tag to search for using CollectionService.
-	@param tweenInfo TweenInfo | string -- The tween settings or a profile string (e.g. "SineOut:1.5").
-	@param properties { [string]: any } -- A table of property goals to tween.
-	@param callback? (() -> nil) -- Optional function called after all tagged tweens complete.
+	@param tag string 
+	@param tweenInfo TweenInfo | string 
+	@param properties { [string]: any } 
+	@param callback? (() -> nil) 
 
 	**Example:**
 	```lua
@@ -655,12 +660,13 @@ end
 --[=[
 	@within TweenModule
 	@function Shake
+	@since 1.0.0
 	Applies a shaking effect to a PVInstance for a set duration and intensity.
 
-	@param target PVInstance -- The instance or model to apply the shake effect to.
-	@param duration number -- The total time in seconds the shake lasts (`-1` for infinite shake).
+	@param target PVInstance
+	@param duration number -- The total time in seconds the shake lasts (`-1` for infinite shake)
 	@param intensity number -- How strong the shake is (higher = more jitter).
-	@param individually boolean -- If true, shakes each BasePart individually; otherwise, shakes the entire model via pivot.
+	@param individually boolean -- If true, shakes each BasePart individually; otherwise, shakes the entire model via pivot
 
 	@return () -> () -- A function that can be called to manually stop the shake.
 
@@ -731,11 +737,12 @@ end
 --[=[
 	@within TweenModule
 	@function Scale
+	@since 1.0.0
 	Scales a PVInstance's BaseParts by a Vector3 value, optionally adjusting position.
 
-	@param target PVInstance -- The instance to scale (Model, Folder, or BasePart).
+	@param target PVInstance 
 	@param tweenInfo TweenInfo | string -- The tween settings or a string profile (e.g., "SineOut:1.5").
-	@param scaleTo Vector3 -- The amount to scale by (additive for per-part, multiplicative for models).
+	@param scaleTo Vector3 
 	@param adjustPosition boolean -- If true, adjusts each part’s position to compensate for scaling.
 	@param scaledByModel boolean -- If true, scales the whole model using pivot math. Requires `target:IsA("Model")`.
 
@@ -785,11 +792,12 @@ end
 --[=[
 	@within TweenModule
 	@function Color
+	@since 1.1.1
 	Animates the color of all BaseParts within a PVInstance to a target color.
 
-	@param target PVInstance -- The instance to color (Model, Folder, or BasePart).
-	@param tweenInfo TweenInfo | string -- The tween configuration or a string profile (e.g. `"OutBounce:1"`).
-	@param ColorTo Color3 | BrickColor | string -- The target color (can be Color3, BrickColor, or hex string like `"#ff0040"`).
+	@param target PVInstance 
+	@param tweenInfo TweenInfo | string 
+	@param ColorTo Color3 | BrickColor | string -- The target color (can be Color3, BrickColor, or hex string like `"#ff0040"`)
 
 	**Example:**
 	```lua
@@ -839,10 +847,11 @@ end
 --[=[
 	@within TweenModule
 	@function Rotate
+	@since 1.0.0
 	Rotates a PVInstance (Model, Folder, or BasePart) using tweens.
 
-	@param target PVInstance -- The instance to rotate.
-	@param tweenInfo TweenInfo | string -- The tween settings or a profile string (e.g. `"SineInOut:1"`).
+	@param target PVInstance 
+	@param tweenInfo TweenInfo | string 
 	@param rotation Vector3 -- The rotation in degrees (X, Y, Z).
 	@param byPivot boolean -- If true, rotates around the current pivot point.
 
@@ -904,10 +913,11 @@ end
 --[=[
 	@within TweenModule
 	@function SequenceTween
+	@since 1.1.0
 	Animates properties of Beams or their descendants using NumberSequence or ColorSequence with easing.
 
-	@param target Instance -- A Beam, Model, Folder, or other container.
-	@param tweenInfo TweenInfo | string -- The easing configuration or a string profile (e.g. `"QuadInOut:1.5"`).
+	@param target Instance 
+	@param tweenInfo TweenInfo | string 
 	@param properties { [string]: any } -- Table of properties to tween. Supports `Color`, `Transparency`, `CurveSize0`, `CurveSize1`.
 	@param universal boolean -- If true, recursively applies to all Beams inside the target.
 
@@ -1051,6 +1061,16 @@ export type GroupHandler = {
 	```
 ]=]
 
+--[=[
+	@within GroupHandler
+	@function new
+	@since 2.0.0
+	Creates a new group tween handle that allows tweening multiple instances together.
+
+	@param ... Instance
+	@return GroupHandler
+]=]
+
 function TweenModule.Groups.new(...): GroupHandler
 	local Instances = { ... }
 	local GroupHandler = {}
@@ -1060,7 +1080,7 @@ function TweenModule.Groups.new(...): GroupHandler
 	@method Add
 	Adds instances to the group.
 
-	@param ... Instance -- Instances to add.
+	@param ... Instance
 	]=]
 
 	function GroupHandler:Add(...)
@@ -1077,7 +1097,7 @@ function TweenModule.Groups.new(...): GroupHandler
 	@method Remove
 	Removes instances from the group.
 
-	@param ... Instance -- Instances to remove.
+	@param ... Instance
 	]=]
 
 	function GroupHandler:Remove(...)
