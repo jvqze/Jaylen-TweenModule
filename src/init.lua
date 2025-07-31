@@ -1134,6 +1134,24 @@ function TweenModule.Groups.new(...): GroupHandler
 	return GroupHandler
 end
 
+--[=[
+	@within TweenModule
+	@function PauseAll
+	Pauses all currently running tweens tracked by TweenModule.
+]=]
+
+--[=[
+	@within TweenModule
+	@function ResumeAll
+	Resumes all paused tweens tracked by TweenModule.
+]=]
+
+--[=[
+	@within TweenModule
+	@function CancelAll
+	Cancels and cleans up all active tweens managed by TweenModule.
+]=]
+
 for _, Action in ipairs({ "Pause", "Resume", "Cancel" }) do
 	TweenModule[Action .. "All"] = function()
 		for _, Handler in pairs(TweenModule.Active) do
