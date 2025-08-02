@@ -653,7 +653,7 @@ function TweenModule.TweenTag(
 			if TweensRemain == 0 and callback then
 				callback()
 			end
-		end)
+		end).Play()
 	end
 end
 
@@ -922,7 +922,7 @@ end
 	@param universal boolean -- If true, recursively applies to all Beams inside the target.
 
 	:::caution Use this function with caution!
-	This function has only been tested with Beams and their properties. Other instances may not work as expected but will be continously worked on if any issues arise.
+	This function has only been tested with Beams and their properties. Other instances may not work as expected but will be continuously worked on if any issues arise.
 	:::
 
 	**Example:**
@@ -1029,12 +1029,6 @@ export type GroupHandler = {
 		properties: { [string]: any },
 		callback: (() -> ())?
 	) -> any,
-	ChainTween: (
-		self: GroupHandler,
-		tweens: { { instance: Instance, tweenInfo: TweenInfo, props: { [string]: any } } },
-		onComplete: (() -> ())?
-	) -> (),
-	SequenceTween: (self: GroupHandler, tweenInfo: TweenInfo, properties: { [string]: any }, universal: boolean) -> (),
 }
 
 --[=[
