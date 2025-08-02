@@ -7,5 +7,8 @@ sidebar_position: 1
 Welcome to Jaylen's TweenModule Documentation! Here, you'll learn on how to use some of the functions from this beautifully built TweenModule!
 
 :::danger NOTICE!
-This `TweenModule` is for anyone, including **Beginners**. If need of any help, check out the [Tutorial](https://www.youtube.com/watch?v=48rz8udZBmQ&pp=ygUQeW91IGFyZSBhbiBpZGlvdA%3D%3D) here! 😏
+This `TweenModule` is for anyone, including **Beginners**. If need of any anything, check out the helpful links below!
+
++ [Jaylen's TweenModule Tutorial](https://youtu.be/4no8Whsuw1I)
++ [TweenModule Asset](https://create.roblox.com/store/asset/125152148870398/Jaylens-TweenModule)
 :::
