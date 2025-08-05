@@ -17,25 +17,17 @@ TweenModule.Groups = {}
 TweenModule.ShowTips = script:GetAttribute("ShowErrorTips")
 
 TweenModule.Enums = {
-	Styles = {
-		Linear = Enum.EasingStyle.Linear,
-		Sine = Enum.EasingStyle.Sine,
-		Back = Enum.EasingStyle.Back,
-		Bounce = Enum.EasingStyle.Bounce,
-		Circular = Enum.EasingStyle.Circular,
-		Cubic = Enum.EasingStyle.Cubic,
-		Elastic = Enum.EasingStyle.Elastic,
-		Exponential = Enum.EasingStyle.Exponential,
-		Quad = Enum.EasingStyle.Quad,
-		Quart = Enum.EasingStyle.Quart,
-		Quint = Enum.EasingStyle.Quint,
-	},
-	Directions = {
-		In = Enum.EasingDirection.In,
-		Out = Enum.EasingDirection.Out,
-		InOut = Enum.EasingDirection.InOut,
-	},
+	Styles = {},
+	Directions = {},
 }
+
+for _, EnumItem in ipairs(Enum.EasingStyle:GetEnumItems()) do
+	TweenModule.Enums.Styles[EnumItem.Name] = EnumItem
+end
+
+for _, EnumItem in ipairs(Enum.EasingDirection:GetEnumItems()) do
+	TweenModule.Enums.Directions[EnumItem.Name] = EnumItem
+end
 
 local BasePartPool = table.create(10)
 
@@ -105,28 +97,26 @@ local function ParseTweenProfile(ProfileName: string): TweenInfo?
 	local duration, repeatCount, reverses, delayTime = 1, 0, false, 0
 
 	local segments = string.split(ProfileName, ":")
-	local ProfileSegment = segments[1]:lower()
+	local profilePart = segments[1]:lower()
 
 	local SortedDirections = {}
-
-	for DirectionName, DirectionEnum in pairs(TweenModule.Enums.Directions) do
-		table.insert(SortedDirections, { Name = DirectionName, Enum = DirectionEnum })
+	for name, enum in pairs(TweenModule.Enums.Directions) do
+		table.insert(SortedDirections, { Name = name:lower(), Enum = enum })
 	end
-
 	table.sort(SortedDirections, function(a, b)
 		return #a.Name > #b.Name
 	end)
 
-	for _, Entry in ipairs(SortedDirections) do
-		if ProfileSegment:find(Entry.Name:lower()) then
-			EasingDirectionMatch = Entry.Enum
+	for _, entry in ipairs(SortedDirections) do
+		if profilePart:find(entry.Name) then
+			EasingDirectionMatch = entry.Enum
 			break
 		end
 	end
 
-	for StyleName, StyleEnum in pairs(TweenModule.Enums.Styles) do
-		if ProfileSegment:find(StyleName:lower()) then
-			EasingStyleMatch = StyleEnum
+	for name, enum in pairs(TweenModule.Enums.Styles) do
+		if profilePart:find(name:lower()) then
+			EasingStyleMatch = enum
 			break
 		end
 	end
@@ -148,10 +138,7 @@ local function ParseTweenProfile(ProfileName: string): TweenInfo?
 		return TweenInfo.new(duration, EasingStyleMatch, EasingDirectionMatch, repeatCount, reverses, delayTime)
 	end
 
-	LogError(
-		"ParseTweenProfile",
-		`The TweenInfo "{ProfileName}" is not a Tween, please check the tutorial for any help`
-	)
+	LogError("ParseTweenProfile", `The TweenInfo "{ProfileName}" is not valid. Please check the documentation.`)
 	return nil
 end
 
@@ -846,6 +833,83 @@ end
 
 --[=[
 	@within TweenModule
+	@function Pulse
+
+	Creates a color pulse animation on a PVInstance, transitioning through multiple colors in sequence using the same tween info.
+
+	@param target PVInstance
+	@param tweenInfo TweenInfo | string
+	@param ... Color3 | BrickColor | string
+
+	**Example:**
+	```lua
+	TweenModule.Pulse(workspace.Model, "SineOut:0.5:2:false:0.25", "#FF0000", BrickColor.new("Bright blue"), Color3.fromRGB(0, 255, 0))
+	```
+]=]
+
+function TweenModule.Pulse(target: PVInstance, tweenInfo: TweenInfo | string, ...)
+	local colors = { ... }
+	local parsedColors = {}
+
+	for _, color in ipairs(colors) do
+		local resolved
+		if typeof(color) == "Color3" then
+			resolved = color
+		elseif typeof(color) == "BrickColor" then
+			resolved = color.Color
+		elseif typeof(color) == "string" then
+			if color:match("^#%x%x%x%x%x%x$") then
+				local r, g, b = color:match("^#(%x%x)(%x%x)(%x%x)$")
+				resolved = Color3.fromRGB(tonumber(r, 16), tonumber(g, 16), tonumber(b, 16))
+			else
+				local ok, brick = pcall(BrickColor.new, color)
+				if ok then
+					resolved = brick.Color
+				else
+					LogError("Pulse", `Invalid color string: {color}`)
+				end
+			end
+		end
+
+		if resolved then
+			table.insert(parsedColors, resolved)
+		end
+	end
+
+	local ResolvedTweenInfo = typeof(tweenInfo) == "string" and ParseTweenProfile(tweenInfo) or tweenInfo
+	if not ResolvedTweenInfo then
+		LogError("Pulse", "Invalid TweenInfo format")
+		return function() end
+	end
+
+	local repeatCount = ResolvedTweenInfo.RepeatCount
+	local isInfinite = repeatCount == -1
+	local running = true
+
+	task.spawn(function()
+		local cycles = 0
+
+		while running and (isInfinite or cycles < repeatCount) do
+			for _, color in ipairs(parsedColors) do
+				if not running then
+					break
+				end
+				TweenModule.Color(target, ResolvedTweenInfo, color)
+				task.wait(
+					ResolvedTweenInfo.Time + (ResolvedTweenInfo.DelayTime == 0 and 0.15 or ResolvedTweenInfo.DelayTime)
+				)
+			end
+			cycles += 1
+		end
+	end)
+
+	return function()
+		running = false
+	end
+end
+
+--[=[
+	@within TweenModule
 	@function Rotate
 	@since 1.0.0
 	Rotates a PVInstance (Model, Folder, or BasePart) using tweens.
@@ -924,7 +988,6 @@ end
 	:::caution Use this function with caution!
 	This function has only been tested with Beams and their properties. Other instances may not work as expected but will be continuously worked on if any issues arise.
 	:::
-
 	**Example:**
 	```lua
 	-- Animate all beams in a model to fade transparency over 2 seconds
@@ -1029,6 +1092,7 @@ export type GroupHandler = {
 		properties: { [string]: any },
 		callback: (() -> ())?
 	) -> any,
+	Pulse: (self: GroupHandler, tweenInfo: TweenInfo | string, ...Color3 | BrickColor | string) -> any,
 }
 
 --[=[
