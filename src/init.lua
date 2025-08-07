@@ -2,6 +2,7 @@
 
 local CollectionService = game:GetService("CollectionService")
 local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 
 --[=[
@@ -14,6 +15,7 @@ local RunService = game:GetService("RunService")
 local TweenModule = {}
 TweenModule.Active = {}
 TweenModule.Groups = {}
+TweenModule.Version = "2.1.1"
 TweenModule.ShowTips = script:GetAttribute("ShowErrorTips")
 
 TweenModule.Enums = {
@@ -65,6 +67,32 @@ local ErrorTips = {
 
 local function LogError(context: string, err: string)
 	error(("[%s] : %s"):format(context, err))
+end
+
+local function CompareVersions(current: string, latest: string): boolean
+	local function split(version)
+		local parts = {}
+		for segment in version:gmatch("[^%.]+") do
+			table.insert(parts, tonumber(segment) or 0)
+		end
+		return parts
+	end
+
+	local currentParts = split(current)
+	local latestParts = split(latest)
+	local len = math.max(#currentParts, #latestParts)
+
+	for i = 1, len do
+		local a = currentParts[i] or 0
+		local b = latestParts[i] or 0
+		if a < b then
+			return true
+		elseif a > b then
+			return false
+		end
+	end
+
+	return false
 end
 
 local function HandleError(context: string, err: string)
@@ -1209,6 +1237,28 @@ end
 	@function CancelAll
 	Cancels and cleans up all active tweens managed by TweenModule.
 ]=]
+
+task.spawn(function()
+	local success, response = pcall(function()
+		return HttpService:GetAsync("https://raw.githubusercontent.com/jvqze/Jaylen-TweenModule/master/version.txt")
+	end)
+
+	if success then
+		local LatestVersion = response:match("^%s*(.-)%s*$")
+		local CurrentVersion = TweenModule.Version
+
+		if CompareVersions(CurrentVersion, LatestVersion) then
+			warn(
+				("[Jaylen's TweenModule] Your version (%s) is outdated. Latest is %s | Get the new version for updates & fixes"):format(
+					CurrentVersion,
+					LatestVersion
+				)
+			)
+		end
+	else
+		warn("[Jaylen's TweenModule] Failed to check for latest version:", response)
+	end
+end)
 
 for _, Action in ipairs({ "Pause", "Resume", "Cancel" }) do
 	TweenModule[Action .. "All"] = function()
