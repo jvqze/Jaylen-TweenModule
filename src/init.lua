@@ -1239,6 +1239,11 @@ end
 ]=]
 
 task.spawn(function()
+	if not HttpService.HttpEnabled then
+		warn("[Jaylen's TweenModule] HttpService is disabled. Cannot check for updates.")
+		return
+	end
+
 	local success, response = pcall(function()
 		return HttpService:GetAsync("https://raw.githubusercontent.com/jvqze/Jaylen-TweenModule/master/version.txt")
 	end)
